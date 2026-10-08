@@ -118,5 +118,11 @@ Jest setup: `yarn nx test plugin-board-events`.
     title edit sent nothing.
   - The live board received each change, rebuilt the board from Kafka after a restart, and
     rejected a tampered pass.
-- **Not yet run:** the plugin inside a running Gauzy build, the RAG indexer against a live Qdrant,
-  and the Docker image build (Docker Hub rate-limited the base image pull).
+- **Plugin checks:**
+  - It type-checks against the real NestJS 11 and TypeORM 1.x packages, with Gauzy's own
+    exports stubbed.
+  - The outbox subscriber ran on TypeORM 1.x with PostgreSQL. It covered create, partial update,
+    a move to another project and soft delete, and a rolled-back update left no event.
+- **Not yet run:** the plugin inside a full Gauzy build (the monorepo install could not fetch a
+  GitHub-hosted dependency from this environment), the RAG indexer against a live Qdrant, and the
+  Docker image build (Docker Hub rate-limited the base image pull).

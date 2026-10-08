@@ -22,13 +22,17 @@ export class TaskOutboxSubscriber implements EntitySubscriberInterface<Task> {
 
 	async afterUpdate(event: UpdateEvent<Task>): Promise<void> {
 		if (!event.entity) return;
-		// `entity` holds only what the caller saved; merge it over the loaded row to get the full task.
-		const after = { ...(event.databaseEntity ?? {}), ...event.entity };
+		// The stored row plus the columns this save actually changed. `event.entity` alone is not
+		// enough: fields the caller left out can show up there as null.
+		const after = { ...(event.databaseEntity ?? event.entity) };
+		for (const column of event.updatedColumns) {
+			after[column.propertyName] = (event.entity as any)[column.propertyName];
+		}
 		await this.write(event.manager, 'task.updated', after, event.databaseEntity);
 	}
 
 	async afterSoftRemove(event: SoftRemoveEvent<Task>): Promise<void> {
-		await this.write(event.manager, 'task.deleted', event.entity ?? event.databaseEntity);
+		await this.write(event.manager, 'task.deleted', event.databaseEntity ?? event.entity);
 	}
 
 	async afterRemove(event: RemoveEvent<Task>): Promise<void> {
