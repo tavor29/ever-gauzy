@@ -1,0 +1,22 @@
+[
+	{
+		"name": "Tell the owner when a task is done",
+		"when": { "event": "task.updated", "field": "status", "becomes": ["done", "completed"] },
+		"then": {
+			"action": "email",
+			"to": "task.owner",
+			"subject": "Done: {{task.title}}",
+			"body": "Hi {{recipient.name}},\n\nYour task \"{{task.title}}\" was just marked {{task.status}}.\n\nTask Board"
+		}
+	},
+	{
+		"name": "Warn the project managers when a task is blocked",
+		"when": { "event": "task.updated", "field": "status", "becomes": ["blocked"] },
+		"then": {
+			"action": "email",
+			"to": "project.managers",
+			"subject": "Blocked: {{task.title}}",
+			"body": "Hi {{recipient.name}},\n\n\"{{task.title}}\" is now blocked (it was {{change.from}}).\n\nTask Board"
+		}
+	}
+]

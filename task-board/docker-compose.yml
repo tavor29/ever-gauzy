@@ -1,0 +1,80 @@
+# The event layer next to Gauzy: Kafka, the outbox relay, automations, the live board and a
+# local mail catcher for demos. Gauzy itself (API with the board-events plugin, Postgres) runs
+# from your Gauzy checkout; both stacks share the app_bridge network, which the AI assistant
+# (ai-assistant/docker-compose.yml) also uses.
+#
+#   docker network create --internal app_bridge   # once, shared by all three stacks
+#   cp .env.example .env && docker compose up -d --build
+
+services:
+  kafka:
+    image: apache/kafka:3.9.1            # single-node KRaft broker, no ZooKeeper
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    volumes: [kafka_data:/var/lib/kafka/data]
+    networks: [app_bridge]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      retries: 12
+
+  # Creates the topic once. Events are kept forever so the live board and the AI index
+  # can always be rebuilt by replaying history.
+  kafka-init:
+    image: apache/kafka:3.9.1
+    depends_on: { kafka: { condition: service_healthy } }
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+        --topic board.task-events --partitions 3 --config retention.ms=-1
+    networks: [app_bridge]
+
+  outbox-relay:
+    build: ./services
+    command: ["node", "src/outbox-relay.js"]
+    env_file: .env
+    depends_on: { kafka-init: { condition: service_completed_successfully } }
+    networks: [app_bridge]
+    restart: unless-stopped
+
+  automations:
+    build: ./services
+    command: ["node", "src/automations/main.js"]
+    env_file: .env
+    volumes: ["./services/rules.json:/app/rules.json:ro"]   # edit rules without rebuilding
+    depends_on: { kafka-init: { condition: service_completed_successfully } }
+    networks: [app_bridge]
+    restart: unless-stopped
+
+  live-board:
+    build: ./services
+    command: ["node", "src/live-board/main.js"]
+    env_file: .env
+    ports: ["8090:8090"]
+    depends_on: { kafka-init: { condition: service_completed_successfully } }
+    networks: [app_bridge, public]
+    restart: unless-stopped
+
+  # Catches outgoing email for demos: open http://localhost:8025. Point SMTP_URL at your
+  # organization's mail relay instead in a real deployment.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["8025:8025"]
+    networks: [app_bridge, public]
+
+volumes:
+  kafka_data:
+
+networks:
+  app_bridge:
+    external: true
+  public: {}                              # only the pages people open: live board, mail catcher

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Board</title>
+<style>
+	:root { --bg: #f6f7f9; --card: #fff; --ink: #1d2433; --muted: #6b7385; --line: #e2e5eb; --flash: #fff4c2; }
+	@media (prefers-color-scheme: dark) { :root { --bg: #14171d; --card: #1e232c; --ink: #e8ebf1; --muted: #9aa3b5; --line: #2c3340; --flash: #4a4322; } }
+	* { box-sizing: border-box; }
+	body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+	header { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+	header h1 { font-size: 16px; margin: 0 12px 0 0; }
+	input { padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); min-width: 0; }
+	button { padding: 6px 12px; border: 0; border-radius: 6px; background: #3b5bdb; color: #fff; cursor: pointer; }
+	#status { color: var(--muted); margin-left: auto; }
+	main { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr)); gap: 12px; padding: 16px; overflow-x: auto; }
+	.col h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+	.card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; transition: background 1.5s; }
+	.card.flash { background: var(--flash); transition: none; }
+	.card small { color: var(--muted); display: block; margin-top: 4px; }
+	@media (max-width: 700px) { main { grid-template-columns: repeat(5, 220px); } }
+</style>
+</head>
+<body>
+<header>
+	<h1>Live Board</h1>
+	<input id="api" placeholder="Gauzy API, e.g. http://localhost:3000" size="28">
+	<input id="token" placeholder="Gauzy access token" type="password" size="18">
+	<input id="board" placeholder="Project id" size="20">
+	<button id="go">Open</button>
+	<span id="status">Not connected</span>
+</header>
+<main id="cols"></main>
+<script>
+// Gauzy statuses grouped into five columns.
+const COLUMNS = [
+	['To do', ['backlog', 'open', '']],
+	['In progress', ['in-progress']],
+	['In review', ['ready-for-review', 'in-review']],
+	['Blocked', ['blocked']],
+	['Done', ['done', 'completed', 'cancelled']]
+];
+const columnOf = (status) => Math.max(COLUMNS.findIndex(([, s]) => s.includes(status || '')), 0);
+const tasks = new Map();
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+for (const k of ['api', 'board']) $(k).value = params.get(k) || localStorageGet(k);
+
+function localStorageGet(k) { try { return localStorage.getItem('lb.' + k) || ''; } catch { return ''; } }
+function localStorageSet(k, v) { try { localStorage.setItem('lb.' + k, v); } catch {} }
+
+function render(flashId) {
+	$('cols').innerHTML = '';
+	COLUMNS.forEach(([name], i) => {
+		const col = document.createElement('section');
+		col.className = 'col';
+		col.innerHTML = `<h2>${name}</h2>`;
+		[...tasks.values()].filter((t) => columnOf(t.status) === i)
+			.sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || ''))
+			.forEach((t) => {
+				const card = document.createElement('div');
+				card.className = 'card' + (t.id === flashId ? ' flash' : '');
+				card.textContent = (t.prefix && t.number ? `${t.prefix}-${t.number} ` : '') + t.title;
+				const meta = document.createElement('small');
+				meta.textContent = [t.priority, t.due_date && 'due ' + t.due_date.slice(0, 10)].filter(Boolean).join(' · ');
+				card.append(meta);
+				col.append(card);
+			});
+		$('cols').append(col);
+	});
+	if (flashId) requestAnimationFrame(() => setTimeout(() => document.querySelectorAll('.flash').forEach((c) => c.classList.remove('flash')), 50));
+}
+
+async function getTicket() {
+	if (params.get('ticket')) return params.get('ticket'); // a pass handed over directly
+	const res = await fetch(`${$('api').value.replace(/\/$/, '')}/api/live-board/ticket?boardId=${encodeURIComponent($('board').value)}`, {
+		headers: { Authorization: 'Bearer ' + $('token').value }
+	});
+	if (!res.ok) throw new Error(res.status === 403 ? 'No access to this project' : 'Could not get a pass from Gauzy');
+	return (await res.json()).ticket;
+}
+
+let source;
+async function connect() {
+	source?.close();
+	$('status').textContent = 'Connecting…';
+	try {
+		const ticket = await getTicket();
+		params.delete('ticket'); // a pass is single use; reconnects ask Gauzy for a fresh one
+		source = new EventSource('stream?ticket=' + encodeURIComponent(ticket));
+	} catch (e) {
+		$('status').textContent = e.message;
+		return;
+	}
+	source.addEventListener('snapshot', (e) => {
+		tasks.clear();
+		JSON.parse(e.data).tasks.forEach((t) => tasks.set(t.id, t));
+		$('status').textContent = `Live · ${tasks.size} tasks`;
+		render();
+	});
+	source.addEventListener('task', (e) => {
+		const { task } = JSON.parse(e.data);
+		tasks.set(task.id, task);
+		$('status').textContent = `Live · updated ${new Date().toLocaleTimeString()}`;
+		render(task.id);
+	});
+	source.addEventListener('removed', (e) => { tasks.delete(JSON.parse(e.data).task_id); render(); });
+	source.addEventListener('reauth', () => { source.close(); connect(); });
+	source.onerror = () => {
+		if (source.readyState === EventSource.CLOSED) { $('status').textContent = 'Disconnected, retrying…'; setTimeout(connect, 3000); }
+	};
+}
+
+$('go').onclick = () => { localStorageSet('api', $('api').value); localStorageSet('board', $('board').value); connect(); };
+render();
+if (params.get('ticket')) connect();
+</script>
+</body>
+</html>

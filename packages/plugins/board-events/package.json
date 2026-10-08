@@ -1,0 +1,32 @@
+{
+	"name": "@gauzy/plugin-board-events",
+	"version": "0.1.0",
+	"description": "Task events to Kafka (outbox), board permissions, live board tickets and the private AI assistant endpoint",
+	"license": "AGPL-3.0",
+	"private": true,
+	"type": "commonjs",
+	"main": "./src/index.js",
+	"typings": "./src/index.d.ts",
+	"scripts": {
+		"lib:build": "yarn nx build plugin-board-events",
+		"lib:build:prod": "yarn nx build plugin-board-events"
+	},
+	"peerDependencies": {
+		"@nestjs/common": "^11.1.26",
+		"@nestjs/core": "^11.1.26"
+	},
+	"dependencies": {
+		"@gauzy/contracts": "^0.1.0",
+		"@gauzy/core": "^0.1.0",
+		"@gauzy/plugin": "^0.1.0",
+		"@nestjs/typeorm": "^11.0.1",
+		"class-transformer": "^0.5.1",
+		"class-validator": "^0.14.2",
+		"typeorm": "^1.0.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/tavor29/ever-gauzy",
+		"directory": "packages/plugins/board-events"
+	}
+}

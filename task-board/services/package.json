@@ -1,0 +1,20 @@
+{
+	"name": "board-services",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Outbox relay, automations and live board for the Gauzy task board",
+	"license": "AGPL-3.0",
+	"type": "module",
+	"engines": { "node": ">=20" },
+	"scripts": {
+		"relay": "node src/outbox-relay.js",
+		"automations": "node src/automations/main.js",
+		"live-board": "node src/live-board/main.js",
+		"test": "node --test test/*.test.js"
+	},
+	"dependencies": {
+		"kafkajs": "2.2.4",
+		"nodemailer": "6.10.1",
+		"pg": "8.16.3"
+	}
+}

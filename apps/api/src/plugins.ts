@@ -18,6 +18,7 @@ import { AiProviderSpeachesPlugin } from '@gauzy/plugin-ai-provider-speaches';
 import { AiProviderLocalAiPlugin } from '@gauzy/plugin-ai-provider-localai';
 import { AiProviderWhisperCppPlugin } from '@gauzy/plugin-ai-provider-whisper-cpp';
 import { AiProviderOpenAiCompatiblePlugin } from '@gauzy/plugin-ai-provider-openai-compatible';
+import { BoardEventsPlugin } from '@gauzy/plugin-board-events';
 import { ChangelogPlugin } from '@gauzy/plugin-changelog';
 import { DocsPlugin } from '@gauzy/plugin-docs';
 import { EverConnectPlugin, isEverConnectEnabled } from '@gauzy/plugin-ever-connect';
@@ -112,6 +113,8 @@ export const plugins = [
 	DocsPlugin,
 	// Indicates the inclusion or intention to use the ChangelogPlugin in the codebase.
 	ChangelogPlugin,
+	// Task events to Kafka (outbox), live board passes and the private AI assistant (task-board/).
+	BoardEventsPlugin,
 	// Indicates the inclusion or intention to use the IntegrationActivepiecesPlugin in the codebase.
 	IntegrationActivepiecesPlugin,
 	// Indicates the inclusion or intention to use the IntegrationAIPlugin in the codebase.
