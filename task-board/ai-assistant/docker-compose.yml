@@ -1,0 +1,77 @@
+# Self-hosted AI assistant stack.
+# Only the RAG service is reachable from the app backend; Ollama and Qdrant
+# sit on an internal network with no route to the internet.
+#
+# Prereqs on the VPS: NVIDIA driver + nvidia-container-toolkit
+#   sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker
+
+name: pm-ai
+
+services:
+  ollama:
+    image: ollama/ollama:latest          # pin a version tag in production
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"           # keep the model resident in VRAM
+      OLLAMA_NUM_PARALLEL: "4"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - ollama_models:/root/.ollama
+      - ./training/export:/models:ro     # merged GGUF + Modelfile from training
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks: [ai_internal]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    # No "ports:" on purpose. Nothing outside the stack can reach it.
+
+  qdrant:
+    image: qdrant/qdrant:latest          # pin a version tag in production
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks: [ai_internal]
+
+  rag:
+    build:
+      context: ./services/rag
+      args:
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      QDRANT_URL: http://qdrant:6333
+      HF_HUB_OFFLINE: "1"                # embedding model is baked into the image
+      TRANSFORMERS_OFFLINE: "1"
+    depends_on:
+      ollama: { condition: service_healthy }
+      qdrant: { condition: service_started }
+    networks:
+      - ai_internal                      # talks to ollama + qdrant
+      - app_bridge                       # reachable by the app backend only
+    # Bind to localhost only if the backend runs on the host, not in Docker:
+    # ports: ["127.0.0.1:8088:8088"]
+
+networks:
+  ai_internal:
+    internal: true                       # no egress: model and vector DB are off-grid
+  app_bridge:
+    external: true                       # create once: docker network create --internal app_bridge
+    name: app_bridge                     # --internal keeps the RAG service off the internet too;
+                                         # attach the existing app backend to this network
+
+volumes:
+  ollama_models:
+  qdrant_data:

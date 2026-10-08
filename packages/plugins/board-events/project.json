@@ -1,0 +1,26 @@
+{
+	"name": "plugin-board-events",
+	"$schema": "../../../node_modules/nx/schemas/project-schema.json",
+	"sourceRoot": "packages/plugins/board-events/src",
+	"projectType": "library",
+	"tags": ["type:plugin"],
+	"implicitDependencies": ["contracts", "core", "plugin"],
+	"targets": {
+		"build": {
+			"executor": "@nx/js:tsc",
+			"outputs": ["{options.outputPath}"],
+			"options": {
+				"outputPath": "dist/packages/plugins/board-events",
+				"tsConfig": "packages/plugins/board-events/tsconfig.lib.json",
+				"packageJson": "packages/plugins/board-events/package.json",
+				"main": "packages/plugins/board-events/src/index.ts"
+			},
+			"dependsOn": ["^build"]
+		},
+		"test": {
+			"executor": "@nx/jest:jest",
+			"outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+			"options": { "jestConfig": "packages/plugins/board-events/jest.config.ts" }
+		}
+	}
+}

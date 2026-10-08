@@ -1,0 +1,11 @@
+FROM /models/pm-mistral.__QUANT__.gguf
+
+# Used only by callers that don't send raw prompts; the RAG service formats prompts itself.
+TEMPLATE """[INST] {{ if .System }}{{ .System }}
+
+{{ end }}{{ .Prompt }} [/INST]"""
+
+PARAMETER stop "</s>"
+PARAMETER stop "[INST]"
+PARAMETER temperature 0.2
+PARAMETER num_ctx 8192

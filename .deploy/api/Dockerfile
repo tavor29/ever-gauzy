@@ -86,6 +86,7 @@ COPY --chown=node:node packages/plugins/product-reviews/package.json ./packages/
 COPY --chown=node:node packages/plugins/videos/package.json ./packages/plugins/videos/
 COPY --chown=node:node packages/plugins/camshot/package.json ./packages/plugins/camshot/
 COPY --chown=node:node packages/plugins/knowledge-base/package.json ./packages/plugins/knowledge-base/
+COPY --chown=node:node packages/plugins/board-events/package.json ./packages/plugins/board-events/
 COPY --chown=node:node packages/plugins/changelog/package.json ./packages/plugins/changelog/
 COPY --chown=node:node packages/plugins/job-search/package.json ./packages/plugins/job-search/
 COPY --chown=node:node packages/plugins/job-proposal/package.json ./packages/plugins/job-proposal/
@@ -205,6 +206,7 @@ COPY --chown=node:node packages/plugins/product-reviews/package.json ./packages/
 COPY --chown=node:node packages/plugins/videos/package.json ./packages/plugins/videos/
 COPY --chown=node:node packages/plugins/camshot/package.json ./packages/plugins/camshot/
 COPY --chown=node:node packages/plugins/knowledge-base/package.json ./packages/plugins/knowledge-base/
+COPY --chown=node:node packages/plugins/board-events/package.json ./packages/plugins/board-events/
 COPY --chown=node:node packages/plugins/changelog/package.json ./packages/plugins/changelog/
 COPY --chown=node:node packages/plugins/job-search/package.json ./packages/plugins/job-search/
 COPY --chown=node:node packages/plugins/job-proposal/package.json ./packages/plugins/job-proposal/
@@ -380,6 +382,7 @@ RUN --mount=type=bind,from=prod-dependencies,source=/srv/gauzy/node_modules,targ
     cp -r /mnt/packages/contracts/node_modules ./node_modules/@gauzy/contracts/ && \
     cp -r /mnt/packages/core/node_modules ./node_modules/@gauzy/core/ && \
     cp -r /mnt/packages/scheduler/node_modules ./node_modules/@gauzy/scheduler/ && \
+    cp -r /mnt/packages/plugins/board-events/node_modules ./node_modules/@gauzy/plugin-board-events/ && \
     cp -r /mnt/packages/plugins/changelog/node_modules ./node_modules/@gauzy/plugin-changelog/ && \
     cp -r /mnt/packages/plugins/integration-activepieces/node_modules ./node_modules/@gauzy/plugin-integration-activepieces/ && \
     cp -r /mnt/packages/plugins/integration-ai/node_modules ./node_modules/@gauzy/plugin-integration-ai/ && \

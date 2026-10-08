@@ -40,6 +40,7 @@
 			"@gauzy/plugin-ai-provider-openai-compatible": [
 				"./packages/plugins/ai-provider-openai-compatible/src/index.ts"
 			],
+			"@gauzy/plugin-board-events": ["./packages/plugins/board-events/src/index.ts"],
 			"@gauzy/plugin-changelog": ["./packages/plugins/changelog/src/index.ts"],
 			"@gauzy/plugin-docs": ["./packages/plugins/docs/src/index.ts"],
 			"@gauzy/plugin-docs-ui": ["./packages/plugins/docs-ui/src/index.ts"],
